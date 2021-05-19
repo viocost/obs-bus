@@ -112,8 +112,5 @@ mBus.unsubscribe(obj, {message: "message_type"})
 mBus.unsubscribe(obj, {channel})
 ```
 
-## Sending messages
-When sending messages message type and sender are required, 
-channel is optional.
 
 
