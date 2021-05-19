@@ -32,7 +32,7 @@ mBus.subscribe({subscriber, message, channel})
 
 //We can form a message as array where first item is 
 //the name of the message and other items is data
-const message1 = ['TEST', {/*some data*/}, {/*more data*/}]
+const message1 = ['TEST', {/*some data*/}, {/*more data*/}, ....]
 
 //We can just send a string without any data.
 //It will be turned into ['HEY'] implicitly.
@@ -42,7 +42,7 @@ const message2 = 'HEY'
 // Putting message on the bus
 mBus.deliver(message1, senderObject, channel)
 
-// Now if message1 is relevant to subscriber subscriber's update method will be called.
+// Now if message1 is relevant to subscriber, then subscriber's update method will be called.
 
 ```
 
