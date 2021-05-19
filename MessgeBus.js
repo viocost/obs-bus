@@ -252,8 +252,8 @@ function asArray(thing) {
     return Array.isArray(thing) ? thing : [thing];
 }
 
-function asSet(channel) {
-    return new CuteSet(asArray(channel));
+function asSet(thing) {
+    return new CuteSet(asArray(thing));
 }
 
 module.exports = {
