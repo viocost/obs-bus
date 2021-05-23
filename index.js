@@ -1,1 +1,1 @@
-module.exports = require("./MessgeBus")
+module.exports = require("./src/MessgeBus")

@@ -1,4 +1,32 @@
 const CuteSet = require("cute-set");
+const Functor = require("./Functor");
+
+/*
+
+import Messages from "some-shit"
+Messages.FOO({data}, {data}...)
+Messages.CHAT_MESSAGE({sdfj, asdf})
+CHAT_CLIENT: {
+
+    !FOO
+    name string null-ok
+    ...
+
+    !BAR
+
+}
+class CHAT_CLIENT {
+    static FOO(data) {
+        // all checks are here
+        return ["FOO", ...data];
+    }
+
+    static BAR(data) {
+        //...
+    }
+}
+*
+*/
 
 class MBusMessage extends Array {
     static make(name, data) {
@@ -72,11 +100,110 @@ class LoggerSubscriber {
     }
 }
 
-class MessageBus {
-    static make(debug) {
-        return new MessageBus(debug);
+class MessageBuilder extends Functor {
+    constructor(mBus, func) {
+        super();
+        this.mBus = mBus;
+        this.buildFunctions = [func];
     }
+
+    deliver(data, sender, channel) {
+        this.mBus._deliver(this(data), sender, channel);
+    }
+    addFactory(factoryName) {
+        if (!this.mBus.hasMessageFactory(factoryName)) {
+            throw new Error(`Message factory ${factoryName} not found`);
+        }
+        //pushing factory function at index 0
+        this.buildFunctions.splice(
+            0,
+            0,
+            this.mBus.messageFactories[factoryName]
+        );
+    }
+
+    __call__(data) {
+        return this.buildFunctions.reduce((acc, func) => func(acc), data);
+    }
+}
+
+class DeliveryAgent extends Functor {
+    constructor(mBus) {
+        super();
+        this.mBus = mBus;
+        this.messageBuilder = new MessageBuilder(mBus);
+    }
+
+    __call__(...args) {
+        this.mBus._deliver(...args);
+    }
+}
+
+class MessageBus {
+    static make(messageFactories = {}, debug) {
+        const mBus = new MessageBus(debug);
+        for (const name in messageFactories) {
+            mBus.addMessageFactory(name, messageFactories[name]);
+        }
+
+        return mBus;
+    }
+
     constructor(debug) {
+        // message factories
+        // This object will contain domain message factories that
+        // can be later called to create domain specific messages.
+        this.messageFactories = {};
+
+
+        this.deliver = new Proxy(new DeliveryAgent(this), {
+            get: (target, prop) => {
+
+                if(prop ==="call" || prop === "apply"){
+                    return target[prop]
+                }
+
+                if (!this.hasMessageFactory(prop)) {
+                    throw new Error(`Message factory ${prop} not found`);
+                }
+
+
+                return new Proxy(
+                    new MessageBuilder(this, this.messageFactories[prop]),
+                    {
+                        get: (target, prop, receiver) => {
+                            target.addFactory(prop);
+                            return receiver;
+                        },
+                        apply: (target, __, args) => target.deliver(...args),
+                    }
+                );
+            },
+        });
+
+        this.wrap = new Proxy(this, {
+            get: (target, prop) => {
+                if (!target.hasMessageFactory(prop)) {
+                    throw new Error(`Message factory ${prop} not found`);
+                }
+
+                return new Proxy(
+                    new MessageBuilder(target, target.messageFactories[prop]),
+                    {
+                        get: (target, prop, receiver) => {
+                            target.addFactory(prop);
+                            return receiver;
+                        },
+                        apply: (target, __, args) => target(...args),
+                    }
+                );
+            },
+
+            apply: (target, thisValue, args) => {
+                throw new Error("Wrap should not be called directly");
+            },
+        });
+
         this.debug = !!debug;
         this._queue = [];
         this._processing = false;
@@ -93,6 +220,18 @@ class MessageBus {
         if (debug) this.subscribe({ subscriber: new LoggerSubscriber() });
     }
 
+    addMessageFactory(name, factory) {
+        if (typeof name !== "string" || typeof factory !== "function") {
+            throw new Error(
+                `Expected name and factory function, but got ${name}, ${factory}`
+            );
+        }
+        this.messageFactories[name] = factory;
+    }
+
+    hasMessageFactory(name) {
+        return name in this.messageFactories;
+    }
     subscribe({ subscriber, message, channel }) {
         if (this.debug) console.log("Subscribe called");
         if (typeof subscriber.update !== "function") {
@@ -106,7 +245,9 @@ class MessageBus {
 
             this._subscribeToChannel(subscriber, asArray(channel));
         } else {
-            this._subscribeToMessage(subscriber, message, asSet(channel));
+            for (let msg of asArray(message)) {
+                this._subscribeToMessage(subscriber, msg, asSet(channel));
+            }
         }
     }
 
@@ -116,7 +257,7 @@ class MessageBus {
         if (!channel && !message) this._unsubscribeTotally(subscriber);
     }
 
-    deliver(message, sender, channel) {
+    _deliver(message, sender, channel) {
         this._queue.push({
             message: MBusMessage.asMessage(message),
             sender,
@@ -185,6 +326,8 @@ class MessageBus {
         let packet;
         while ((packet = this._queue.splice(0, 1)[0])) {
             const { message, sender, channels } = packet;
+
+            if (this.debug) console.log(`Processing message ${message[0]}`);
             const receivedSet = new CuteSet();
             receivedSet.add(sender);
 
@@ -252,8 +395,8 @@ function asArray(thing) {
     return Array.isArray(thing) ? thing : [thing];
 }
 
-function asSet(thing) {
-    return new CuteSet(asArray(thing));
+function asSet(channel) {
+    return new CuteSet(asArray(channel));
 }
 
 module.exports = {

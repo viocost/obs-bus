@@ -1,4 +1,4 @@
-const { MessageBus, MBusMessage } = require("../MessgeBus");
+const { MessageBus, MBusMessage } = require("../");
 const chalk = require("chalk");
 
 class Subscriber {
@@ -9,7 +9,8 @@ class Subscriber {
 
     update(message) {
         this.delivered.push(message);
-        console.log(`Subscriber ${this.id} received message ${message.name}`);
+        console.log(`Subscriber ${this.id} received message ${message[0]} DATA:`);
+        console.dir(message[1])
     }
 }
 
@@ -49,14 +50,14 @@ function testChannels() {
 
         mBus.subscribe({ subscriber: s1, channel: [s2, "x", 55] });
 
-        mBus.deliver("TEST1", s2, s2);
-        mBus.deliver("TEST2", s2, "x");
-        mBus.deliver("TEST3", s2, 55);
-        mBus.deliver("TEST4", s2, [s2, "a", "x"]);
-        mBus.to(55).deliver("TEST4", s2);
-        mBus.to(58).deliver("TEST8", s2);
+        mBus.deliver("TEST1_nopayload", s2, s2);
+        mBus.deliver("TEST2_nopayload", s2, "x");
+        mBus.deliver("TEST3_nopayload", s2, 55);
+        mBus.deliver("TEST4_nopayload", s2, [s2, "a", "x"]);
+        mBus.to(55).deliver("TEST4_nopayload", s2);
+        mBus.to(58).deliver("TEST8_nopayload", s2);
         mBus.unsubscribe(s1, { channel: s2 });
-        mBus.to(58).deliver("TEST8", s2);
+        mBus.to(58).deliver("TEST8_nopayload", s2);
 
         mBus.unsubscribe(s1, { channel: "non-existent" });
         mBus.unsubscribe(s1, { message: "non-existent" });
@@ -92,24 +93,30 @@ function testChannels() {
 
 function testEndless() {
     return new Promise((resolve, reject) => {
-        const s1 = new Subscriber(1);
-        const s2 = new Subscriber(2);
-        const mBus = new MessageBus();
+        try{
+            
+            const s1 = new Subscriber(1);
+            const s2 = new Subscriber(2);
+            const mBus = MessageBus.make(null, true);
 
-        s1.update = function (message, sender, bus) {
-            console.log(`Subscriber ${this.id} Received message ${message[0]}`);
-            bus.deliver("test", s1);
-        };
-        s2.update = function (message, sender, bus) {
-            console.log(`Subscriber ${this.id} Received message ${message[0]}`);
-            bus.deliver("test", s2);
-        };
+            s1.update = function (message, sender, bus) {
+                console.log(`Subscriber ${this.id} Received message ${message[0]}`);
+                bus.deliver("test", s1);
+            };
+            s2.update = function (message, sender, bus) {
+                console.log(`Subscriber ${this.id} Received message ${message[0]}`);
+                bus.deliver("test", s2);
+            };
 
-        mBus.subscribe({ subscriber: s2, channel: s1 });
+            mBus.subscribe({ subscriber: s2, channel: s1 });
+            mBus.subscribe({ subscriber: s1, channel: s2 });
 
-        mBus.deliver("test", s1);
+            mBus.deliver("test", s1);
+        }catch(err){
+            console.log("Stack blew up successfully");
+            resolve()
+        }
 
-        setTimeout(() => resolve(), 500);
     });
 }
 
