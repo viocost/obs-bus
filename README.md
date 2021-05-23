@@ -32,7 +32,7 @@ mBus.subscribe({subscriber, message, channel})
 
 //We can form a message as array where first item is 
 //the name of the message and other items is data
-const message1 = ['TEST', {/*some data*/}, {/*more data*/}, ....]
+const message1 = ['TEST', {/*some data*/}]
 
 //We can just send a string without any data.
 //It will be turned into ['HEY'] implicitly.
