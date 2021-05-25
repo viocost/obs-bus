@@ -56,13 +56,21 @@ class MBusMessage extends Array {
     }
 }
 
+/**
+ * this class implements a map with default value,
+ * such that when key does not exist a default value is returned,
+ * instead of undefined or throwing error.
+ *
+ * The value that is returned is determined by default function
+ * which by default returns undefined
+ * */
 class SubscriptionMap extends Map {
     get(key) {
         if (!this.has(key)) return this.default();
         return super.get(key);
     }
 
-    constructor(defaultFunction, entries) {
+    constructor(defaultFunction = ()=>undefined, entries) {
         super(entries);
         this.default = defaultFunction;
     }
@@ -211,7 +219,7 @@ class MessageBus {
         this.subscriptionsPerChannel = new SubscriptionMap(() => new CuteSet());
 
         // If subscription is done for certain message
-        // it is stored here as messageType -> subscriber
+        // it is stored here as messageType -> subscriber -> channels
         this.subscriptionsPerMessage = new SubscriptionMap(() => new Map());
 
         // If subscriber signs up for all messages
@@ -267,6 +275,20 @@ class MessageBus {
         if (this._processing) return;
 
         this._processQueue();
+    }
+
+    //Returns list of all active subscribers
+    subscribers(){
+        const perChannel = Array.from(this.subscriptionsPerChannel.keys())
+                                .reduce((acc, key)=>acc.union(this.subscriptionsPerChannel.get(key)),
+                                        new CuteSet())
+
+        const perMessage = Array.from(this.subscriptionsPerMessage.keys())
+                                .reduce((acc, key)=>acc.union(this.subscriptionsPerMessage.get(key).keys()),
+                                        new CuteSet)
+        return this.subscriptionsFull
+                   .union(perChannel)
+                   .union(perMessage)
     }
 
     to(channel) {

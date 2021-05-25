@@ -88,8 +88,7 @@ mBus.subscribe({subscriber,  channel: '55'})
 ## Channels
 Channel can be anything: number, string, object, array or another sender. 
 
-Each sender represents its own channel. When messages are delivered and there are some objects subscribed to the sender of the message - the message will be delivered, and there is no need to 
-explicitly specify a channel: 
+Each sender represents its own channel. When messages are delivered and there are some objects subscribed to the sender of the message - the message will be delivered while channel not explicitly provided: 
 
 
 ```javascript

@@ -1,5 +1,6 @@
 const { MessageBus, MBusMessage } = require("../");
-const chalk = require("chalk");
+const assert = require("assert")
+const CuteSet = require("cute-set")
 
 class Subscriber {
     constructor(id) {
@@ -13,6 +14,31 @@ class Subscriber {
         console.dir(message[1])
     }
 }
+
+
+
+describe("Testing message bus", ()=>{
+
+    it("Should create message bus", ()=>{
+        const mBus = MessageBus.make();
+        assert(mBus instanceof MessageBus)
+    })
+
+    it("Should subscribe subscribers", ()=>{
+        
+        const s1 = new Subscriber(1);
+        const s2 = new Subscriber(2);
+        const s3 = new Subscriber(3);
+
+        const mBus = MessageBus.make();
+        mBus.subscribe({ subscriber: s1, message: "TEST" });
+        mBus.subscribe({ subscriber: s2, message: "TEST", channel: [1, 2] });
+        mBus.subscribe({ subscriber: s3 });
+
+        assert(new CuteSet([s1, s2, s3]).equal(mBus.subscribers()))
+    })
+
+})
 
 function runTest() {
     console.log("===Testing regular subscriptions and delivery");
@@ -120,17 +146,4 @@ function testEndless() {
     });
 }
 
-function assert(condition) {
-    console.log(
-        condition ? chalk.green("Test passed") : chalk.red("Test failed")
-    );
-}
 
-Promise.all([runTest(), testChannels(), testEndless()])
-    .then(() => {
-        console.log("Finished");
-    })
-    .catch((err) => {
-        console.log(`Error ${err}`);
-        console.trace(err);
-    });
