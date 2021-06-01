@@ -1,5 +1,5 @@
-const CuteSet = require("cute-set");
-const Functor = require("./Functor");
+const CuteSet = require("cute-set")
+const Functor = require("./Functor")
 
 /*
 
@@ -31,16 +31,16 @@ class CHAT_CLIENT {
 class MBusMessage extends Array {
     static make(name, data) {
         if (new Set(["string", "symbol"]).has(typeof name)) {
-            return new MBusMessage(name, data);
+            return new MBusMessage(name, data)
         }
         throw new Error(
             `Name parameter is required and must be a String or a Symbol. Got: ${name}`
-        );
+        )
     }
 
     static fromBlob(blob) {
-        let [name, data] = JSON.parse(blob);
-        return MBusMessage.make(name, data);
+        let [name, data] = JSON.parse(blob)
+        return MBusMessage.make(name, data)
     }
 
     static asMessage(item) {
@@ -48,11 +48,11 @@ class MBusMessage extends Array {
             ? item
             : Array.isArray(item)
             ? MBusMessage.make(...item)
-            : MBusMessage.make(item);
+            : MBusMessage.make(item)
     }
 
     constructor() {
-        super(...arguments);
+        super(...arguments)
     }
 }
 
@@ -66,35 +66,35 @@ class MBusMessage extends Array {
  * */
 class SubscriptionMap extends Map {
     get(key) {
-        if (!this.has(key)) return this.default();
-        return super.get(key);
+        if (!this.has(key)) return this.default()
+        return super.get(key)
     }
 
-    constructor(defaultFunction = ()=>undefined, entries) {
-        super(entries);
-        this.default = defaultFunction;
+    constructor(defaultFunction = () => undefined, entries) {
+        super(entries)
+        this.default = defaultFunction
     }
 }
 
 class ChannelSender {
     constructor(mBus) {
-        this.channels = new CuteSet();
-        this.mBus = mBus;
+        this.channels = new CuteSet()
+        this.mBus = mBus
     }
 
     to(channel) {
-        this.channels.add(channel);
-        return this;
+        this.channels.add(channel)
+        return this
     }
 
     deliver(message, sender, channel) {
-        if (channel) this.channels.add(channel);
+        if (channel) this.channels.add(channel)
         this.mBus.deliver.call(
             this.mBus,
             message,
             sender,
             this.channels.toArray()
-        );
+        )
     }
 }
 
@@ -104,272 +104,248 @@ class LoggerSubscriber {
             `====Debugger: message ${message[0].toString()} from ${
                 sender.constructor.name
             }`
-        );
+        )
     }
 }
 
 class MessageBuilder extends Functor {
     constructor(mBus, func) {
-        super();
-        this.mBus = mBus;
-        this.buildFunctions = [func];
+        super()
+        this.mBus = mBus
+        this.buildFunctions = [func]
     }
 
     deliver(data, sender, channel) {
-        this.mBus._deliver(this(data), sender, channel);
+        this.mBus._deliver(this(data), sender, channel)
     }
     addFactory(factoryName) {
         if (!this.mBus.hasMessageFactory(factoryName)) {
-            throw new Error(`Message factory ${factoryName} not found`);
+            throw new Error(`Message factory ${factoryName} not found`)
         }
         //pushing factory function at index 0
         this.buildFunctions.splice(
             0,
             0,
             this.mBus.messageFactories[factoryName]
-        );
+        )
     }
 
     __call__(data) {
-        return this.buildFunctions.reduce((acc, func) => func(acc), data);
+        return this.buildFunctions.reduce((acc, func) => func(acc), data)
     }
 }
 
 class DeliveryAgent extends Functor {
     constructor(mBus) {
-        super();
-        this.mBus = mBus;
-        this.messageBuilder = new MessageBuilder(mBus);
+        super()
+        this.mBus = mBus
+        this.messageBuilder = new MessageBuilder(mBus)
     }
 
     __call__(...args) {
-        this.mBus._deliver(...args);
+        this.mBus._deliver(...args)
     }
 }
 
 class MessageBus {
     static make(messageFactories = {}, debug) {
-        const mBus = new MessageBus(debug);
+        const mBus = new MessageBus(debug)
         for (const name in messageFactories) {
-            mBus.addMessageFactory(name, messageFactories[name]);
+            mBus.addMessageFactory(name, messageFactories[name])
         }
 
-        return mBus;
+        return mBus
     }
 
     constructor(debug) {
         // message factories
         // This object will contain domain message factories that
         // can be later called to create domain specific messages.
-        this.messageFactories = {};
-
+        this.messageFactories = {}
 
         this.deliver = new Proxy(new DeliveryAgent(this), {
             get: (target, prop) => {
-
-                if(prop ==="call" || prop === "apply"){
+                if (prop === "call" || prop === "apply") {
                     return target[prop]
                 }
 
                 if (!this.hasMessageFactory(prop)) {
-                    throw new Error(`Message factory ${prop} not found`);
+                    throw new Error(`Message factory ${prop} not found`)
                 }
-
 
                 return new Proxy(
                     new MessageBuilder(this, this.messageFactories[prop]),
                     {
-                        get: (target, prop, receiver) => {
-                            target.addFactory(prop);
-                            return receiver;
-                        },
-                        apply: (target, __, args) => target.deliver(...args),
+                        get: (target, prop, receiver) => target[prop],
+                        apply: (target, __, args) => target.deliver(...args)
                     }
-                );
-            },
-        });
+                )
+            }
+        })
 
-        this.wrap = new Proxy(this, {
-            get: (target, prop) => {
-                if (!target.hasMessageFactory(prop)) {
-                    throw new Error(`Message factory ${prop} not found`);
-                }
+        this.debug = !!debug
+        this._queue = []
+        this._processing = false
 
-                return new Proxy(
-                    new MessageBuilder(target, target.messageFactories[prop]),
-                    {
-                        get: (target, prop, receiver) => {
-                            target.addFactory(prop);
-                            return receiver;
-                        },
-                        apply: (target, __, args) => target(...args),
-                    }
-                );
-            },
-
-            apply: (target, thisValue, args) => {
-                throw new Error("Wrap should not be called directly");
-            },
-        });
-
-        this.debug = !!debug;
-        this._queue = [];
-        this._processing = false;
-
-        this.subscriptionsPerChannel = new SubscriptionMap(() => new CuteSet());
+        this.subscriptionsPerChannel = new SubscriptionMap(() => new CuteSet())
 
         // If subscription is done for certain message
         // it is stored here as messageType -> subscriber -> channels
-        this.subscriptionsPerMessage = new SubscriptionMap(() => new Map());
+        this.subscriptionsPerMessage = new SubscriptionMap(() => new Map())
 
         // If subscriber signs up for all messages
         // it is placed in this map
-        this.subscriptionsFull = new CuteSet();
-        if (debug) this.subscribe({ subscriber: new LoggerSubscriber() });
+        this.subscriptionsFull = new CuteSet()
+        if (debug) this.subscribe({ subscriber: new LoggerSubscriber() })
     }
 
     addMessageFactory(name, factory) {
         if (typeof name !== "string" || typeof factory !== "function") {
             throw new Error(
                 `Expected name and factory function, but got ${name}, ${factory}`
-            );
+            )
         }
-        this.messageFactories[name] = factory;
+        this.messageFactories[name] = factory
     }
 
     hasMessageFactory(name) {
-        return name in this.messageFactories;
+        return name in this.messageFactories
     }
     subscribe({ subscriber, message, channel }) {
-        if (this.debug) console.log("Subscribe called");
+        if (this.debug) console.log("Subscribe called")
         if (typeof subscriber.update !== "function") {
-            throw new Error("Subscriber must have update method");
+            throw new Error("Subscriber must have update method")
         }
 
         if (null == message) {
             if (null == channel) {
-                this._subscribeToAll(subscriber);
+                this._subscribeToAll(subscriber)
             }
 
-            this._subscribeToChannel(subscriber, asArray(channel));
+            this._subscribeToChannel(subscriber, asArray(channel))
         } else {
             for (let msg of asArray(message)) {
-                this._subscribeToMessage(subscriber, msg, asSet(channel));
+                this._subscribeToMessage(subscriber, msg, asSet(channel))
             }
         }
     }
 
     unsubscribe(subscriber, { channel, message } = {}) {
-        if (channel) this._unsubscribeFromChannel(subscriber, channel);
-        if (message) this._unsubscribeFromMessage(subscriber, message);
-        if (!channel && !message) this._unsubscribeTotally(subscriber);
+        if (channel) this._unsubscribeFromChannel(subscriber, channel)
+        if (message) this._unsubscribeFromMessage(subscriber, message)
+        if (!channel && !message) this._unsubscribeTotally(subscriber)
     }
 
     _deliver(message, sender, channel) {
         this._queue.push({
             message: MBusMessage.asMessage(message),
             sender,
-            channels: asSet(channel),
-        });
+            channels: asSet(channel)
+        })
 
-        if (this._processing) return;
+        if (this._processing) return
 
-        this._processQueue();
+        this._processQueue()
     }
 
     //Returns list of all active subscribers
-    subscribers(){
-        const perChannel = Array.from(this.subscriptionsPerChannel.keys())
-                                .reduce((acc, key)=>acc.union(this.subscriptionsPerChannel.get(key)),
-                                        new CuteSet())
+    subscribers() {
+        const perChannel = Array.from(
+            this.subscriptionsPerChannel.keys()
+        ).reduce(
+            (acc, key) => acc.union(this.subscriptionsPerChannel.get(key)),
+            new CuteSet()
+        )
 
-        const perMessage = Array.from(this.subscriptionsPerMessage.keys())
-                                .reduce((acc, key)=>acc.union(this.subscriptionsPerMessage.get(key).keys()),
-                                        new CuteSet)
-        return this.subscriptionsFull
-                   .union(perChannel)
-                   .union(perMessage)
+        const perMessage = Array.from(
+            this.subscriptionsPerMessage.keys()
+        ).reduce(
+            (acc, key) =>
+                acc.union(this.subscriptionsPerMessage.get(key).keys()),
+            new CuteSet()
+        )
+        return this.subscriptionsFull.union(perChannel).union(perMessage)
     }
 
     to(channel) {
-        const sender = new ChannelSender(this);
-        return sender.to(channel);
+        const sender = new ChannelSender(this)
+        return sender.to(channel)
     }
 
     _unsubscribeFromChannel(subscriber, channel) {
-        this.subscriptionsPerChannel.get(channel).delete(subscriber);
+        this.subscriptionsPerChannel.get(channel).delete(subscriber)
     }
 
     _unsubscribeFromMessage(subscriber, message) {
-        this.subscriptionsPerMessage.get(message).delete(subscriber);
+        this.subscriptionsPerMessage.get(message).delete(subscriber)
     }
 
     _unsubscribeTotally(subscriber) {
-        this.subscriptionsFull.delete(subscriber);
+        this.subscriptionsFull.delete(subscriber)
         for (let [__, channel] of this.subscriptionsPerChannel) {
-            channel.delete(subscriber);
+            channel.delete(subscriber)
         }
 
         for (let [__, message] of this.subscriptionsPerMessage) {
-            message.delete(subscriber);
+            message.delete(subscriber)
         }
     }
 
     _subscribeToMessage(subscriber, message, channels) {
-        if (this.debug) console.log(`Subscribing to message ${message}`);
+        if (this.debug) console.log(`Subscribing to message ${message}`)
         if (!this.subscriptionsPerMessage.has(message)) {
-            this.subscriptionsPerMessage.set(message, new Map());
+            this.subscriptionsPerMessage.set(message, new Map())
         }
 
-        let subscriptions = this.subscriptionsPerMessage.get(message);
-        subscriptions.set(subscriber, channels);
+        let subscriptions = this.subscriptionsPerMessage.get(message)
+        subscriptions.set(subscriber, channels)
     }
 
     _subscribeToChannel(subscriber, channels) {
-        if (this.debug) console.log(`Subscribing to channel ${channels}`);
+        if (this.debug) console.log(`Subscribing to channel ${channels}`)
         for (let channel of channels) {
             if (!this.subscriptionsPerChannel.has(channel)) {
-                this.subscriptionsPerChannel.set(channel, new CuteSet());
+                this.subscriptionsPerChannel.set(channel, new CuteSet())
             }
 
-            this.subscriptionsPerChannel.get(channel).add(subscriber);
+            this.subscriptionsPerChannel.get(channel).add(subscriber)
         }
     }
 
     _subscribeToAll(subscriber) {
-        if (this.debug) console.log(`Subscribing to all`);
-        this.subscriptionsFull.add(subscriber);
+        if (this.debug) console.log(`Subscribing to all`)
+        this.subscriptionsFull.add(subscriber)
     }
 
     _processQueue() {
-        this.processing = true;
+        this.processing = true
 
         // For every packet in queue
-        let packet;
+        let packet
         while ((packet = this._queue.splice(0, 1)[0])) {
-            const { message, sender, channels } = packet;
+            const { message, sender, channels } = packet
 
-            if (this.debug) console.log(`Processing message ${message[0]}`);
-            const receivedSet = new CuteSet();
-            receivedSet.add(sender);
+            if (this.debug) console.log(`Processing message ${message[0]}`)
+            const receivedSet = new CuteSet()
+            receivedSet.add(sender)
 
             const deliver = function (msg, sender, mBus, subscriber) {
-                subscriber.update.call(subscriber, msg, sender, mBus);
-            }.bind(null, message, sender, this);
+                subscriber.update.call(subscriber, msg, sender, mBus)
+            }.bind(null, message, sender, this)
 
             // Send to full subscribers
             for (let subscriber of this.subscriptionsFull) {
-                if (this.debug) console.log("Delivering to all");
-                deliver(subscriber);
-                receivedSet.add(subscriber);
+                if (this.debug) console.log("Delivering to all")
+                deliver(subscriber)
+                receivedSet.add(subscriber)
             }
 
             // Send to per-message subscribers
             for (let [
                 subscriber,
-                channelFilter,
+                channelFilter
             ] of this.subscriptionsPerMessage.get(message[0])) {
-                if (receivedSet.has(subscriber)) continue;
+                if (receivedSet.has(subscriber)) continue
 
                 if (
                     // channelFilter is a set of channels per message subscription
@@ -381,48 +357,48 @@ class MessageBus {
                     channelFilter.intersection(channels.union([sender]))
                         .length > 0
                 ) {
-                    if (this.debug) console.log("Delivering per message");
-                    deliver(subscriber);
-                    receivedSet.add(subscriber);
+                    if (this.debug) console.log("Delivering per message")
+                    deliver(subscriber)
+                    receivedSet.add(subscriber)
                 }
             }
 
             //Extracting all keys from subscriptionsPerChannel
             //that are found in channels of the message
-            const combinedChannels = channels.union([sender]);
+            const combinedChannels = channels.union([sender])
             let relevantChannels = Array.from(
                 this.subscriptionsPerChannel.keys()
-            ).filter((key) => combinedChannels.has(key));
+            ).filter((key) => combinedChannels.has(key))
 
             //For each channel getting set of subscribers
             // joining them all together and substracting subscribers that are
             // already got that message
             let subscribers = relevantChannels
                 .reduce((acc, key) => {
-                    return acc.union(this.subscriptionsPerChannel.get(key));
+                    return acc.union(this.subscriptionsPerChannel.get(key))
                 }, new CuteSet())
-                .minus(receivedSet);
+                .minus(receivedSet)
 
             //Delivering
             for (let subscriber of subscribers) {
-                deliver(subscriber);
-                receivedSet.add(subscriber);
+                deliver(subscriber)
+                receivedSet.add(subscriber)
             }
         }
     }
 }
 
 function asArray(thing) {
-    if (null == thing) return [];
-    return Array.isArray(thing) ? thing : [thing];
+    if (null == thing) return []
+    return Array.isArray(thing) ? thing : [thing]
 }
 
 function asSet(channel) {
-    return new CuteSet(asArray(channel));
+    return new CuteSet(asArray(channel))
 }
 
 module.exports = {
     default: MessageBus,
     MessageBus,
-    MBusMessage,
-};
+    MBusMessage
+}
