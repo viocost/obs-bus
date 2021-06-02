@@ -1,5 +1,4 @@
 const CuteSet = require("cute-set")
-const Functor = require("./Functor")
 
 /*
 
@@ -108,45 +107,6 @@ class LoggerSubscriber {
     }
 }
 
-class MessageBuilder extends Functor {
-    constructor(mBus, func) {
-        super()
-        this.mBus = mBus
-        this.buildFunctions = [func]
-    }
-
-    deliver(data, sender, channel) {
-        this.mBus._deliver(this(data), sender, channel)
-    }
-    addFactory(factoryName) {
-        if (!this.mBus.hasMessageFactory(factoryName)) {
-            throw new Error(`Message factory ${factoryName} not found`)
-        }
-        //pushing factory function at index 0
-        this.buildFunctions.splice(
-            0,
-            0,
-            this.mBus.messageFactories[factoryName]
-        )
-    }
-
-    __call__(data) {
-        return this.buildFunctions.reduce((acc, func) => func(acc), data)
-    }
-}
-
-class DeliveryAgent extends Functor {
-    constructor(mBus) {
-        super()
-        this.mBus = mBus
-        this.messageBuilder = new MessageBuilder(mBus)
-    }
-
-    __call__(...args) {
-        this.mBus._deliver(...args)
-    }
-}
-
 class MessageBus {
     static make(messageFactories = {}, debug) {
         const mBus = new MessageBus(debug)
@@ -162,26 +122,6 @@ class MessageBus {
         // This object will contain domain message factories that
         // can be later called to create domain specific messages.
         this.messageFactories = {}
-
-        this.deliver = new Proxy(new DeliveryAgent(this), {
-            get: (target, prop) => {
-                if (prop === "call" || prop === "apply") {
-                    return target[prop]
-                }
-
-                if (!this.hasMessageFactory(prop)) {
-                    throw new Error(`Message factory ${prop} not found`)
-                }
-
-                return new Proxy(
-                    new MessageBuilder(this, this.messageFactories[prop]),
-                    {
-                        get: (target, prop, receiver) => target[prop],
-                        apply: (target, __, args) => target.deliver(...args)
-                    }
-                )
-            }
-        })
 
         this.debug = !!debug
         this._queue = []
@@ -211,6 +151,7 @@ class MessageBus {
     hasMessageFactory(name) {
         return name in this.messageFactories
     }
+
     subscribe({ subscriber, message, channel }) {
         if (this.debug) console.log("Subscribe called")
         if (typeof subscriber.update !== "function") {
@@ -236,7 +177,7 @@ class MessageBus {
         if (!channel && !message) this._unsubscribeTotally(subscriber)
     }
 
-    _deliver(message, sender, channel) {
+    deliver(message, sender, channel) {
         this._queue.push({
             message: MBusMessage.asMessage(message),
             sender,

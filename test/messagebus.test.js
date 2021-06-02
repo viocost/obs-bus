@@ -76,19 +76,6 @@ describe("Testing message bus", () => {
             assert(s3.messagesReceived[1][0] === "TEST")
         })
     })
-
-    it("Testing delivery api with domain messages", () => {
-        const mBus = MessageBus.make({
-            HELLO: () => ["HELLO"]
-        })
-        mBus.deliver.HELLO()
-
-        assert(mBus.deliver.HELLO.FOO === undefined)
-
-        expect(() => {
-            mBus.deliver.NON_EXISTENT_MESSSAGE
-        }).toThrow()
-    })
 })
 
 function runTest() {
