@@ -1,32 +1,5 @@
 const CuteSet = require("cute-set")
 
-/*
-
-import Messages from "some-shit"
-Messages.FOO({data}, {data}...)
-Messages.CHAT_MESSAGE({sdfj, asdf})
-CHAT_CLIENT: {
-
-    !FOO
-    name string null-ok
-    ...
-
-    !BAR
-
-}
-class CHAT_CLIENT {
-    static FOO(data) {
-        // all checks are here
-        return ["FOO", ...data];
-    }
-
-    static BAR(data) {
-        //...
-    }
-}
-*
-*/
-
 class MBusMessage extends Array {
     static make(name, data) {
         if (new Set(["string", "symbol", "number"]).has(typeof name)) {
