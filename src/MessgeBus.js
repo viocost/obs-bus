@@ -29,11 +29,11 @@ class CHAT_CLIENT {
 
 class MBusMessage extends Array {
     static make(name, data) {
-        if (new Set(["string", "symbol"]).has(typeof name)) {
+        if (new Set(["string", "symbol", "number"]).has(typeof name)) {
             return new MBusMessage(name, data)
         }
         throw new Error(
-            `Name parameter is required and must be a String or a Symbol. Got: ${name}`
+            `Name parameter is required and must be a String, a Symbol or a Number. Got neither.`
         )
     }
 
@@ -98,12 +98,22 @@ class ChannelSender {
 }
 
 class LoggerSubscriber {
-    update(message, sender) {
-        console.log(
-            `====Debugger: message ${message[0].toString()} from ${
-                sender.constructor.name
-            }`
-        )
+    update(message, sender, channel) {
+        try {
+            console.log(
+                `====Debugger: message ${message[0].toString()} from ${this.getSenderRepr(
+                    sender
+                )} on channel ${channel}`
+            )
+        } catch (err) {
+            console.log(`====Debugger: received message but failed to parse`)
+        }
+    }
+
+    getSenderRepr(sender) {
+        return !sender || !sender.constructor
+            ? "UNKNOWN"
+            : sender.constructor.name
     }
 }
 
