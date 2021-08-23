@@ -80,7 +80,7 @@ export default class MessageBus implements IMessageBus {
     private subscriptionsFull: CuteSet;
     private messageFactories = {};
 
-    static make(messageFactories = {}, debug) {
+    static make(messageFactories = {}, debug): IMessageBus {
         const mBus = new MessageBus(debug);
         for (const name in messageFactories) {
             mBus.addMessageFactory(name, messageFactories[name]);
@@ -89,7 +89,7 @@ export default class MessageBus implements IMessageBus {
         return mBus;
     }
 
-    constructor(debug: boolean) {
+    constructor(debug = false) {
         // message factories
         // This object will contain domain message factories that
         // can be later called to create domain specific messages.
@@ -140,7 +140,7 @@ export default class MessageBus implements IMessageBus {
         }
     }
 
-    unsubscribe(subscriber: Updatable, data: UnsubscribeData) {
+    unsubscribe(subscriber: Updatable, data?: UnsubscribeData) {
         const { channel, message } = data;
         if (channel) this._unsubscribeFromChannel(subscriber, channel);
         if (message) this._unsubscribeFromMessage(subscriber, message);
@@ -149,7 +149,7 @@ export default class MessageBus implements IMessageBus {
 
     deliver(message: MBusMessage | MessageName, sender: {}, channel?: Channel) {
         this._queue.push({
-            message: message,
+            message: asMessage(message),
             sender,
             channels: asSet<Channel>(channel),
         });
@@ -301,11 +301,23 @@ export default class MessageBus implements IMessageBus {
     }
 }
 
-function asArray<T>(thing: T): Array<T> {
+function asArray<T>(thing: T | Array<T>): Array<T> {
     if (null == thing) return [];
     return Array.isArray(thing) ? thing : [thing];
 }
 
 function asSet<T>(item: T) {
     return new CuteSet(asArray<T>(item));
+}
+
+function asMessage(item: MBusMessage | MessageName): MBusMessage {
+    if (typeof item === "string") {
+        return [item];
+    }
+
+    if (Array.isArray(item) && typeof item[0] === "string") {
+        return item;
+    }
+
+    throw new Error("Invalid message candidate");
 }

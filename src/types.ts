@@ -1,9 +1,10 @@
 import { CuteSet } from "cute-set";
+
 export type MessageName = string | number | Symbol;
 
 export type Channel = {} | string | number | Symbol;
 
-export type MBusMessage = [messageName: MessageName, data?: {}];
+export type MBusMessage<T = any> = [messageName: MessageName, data?: T];
 
 export type Subscription = {
     subscriber: Updatable;
