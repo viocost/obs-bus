@@ -33,6 +33,6 @@ export interface Updatable {
 export interface IMessageBus {
     subscribe(subscription: Subscription): void;
     unsubscribe(subscriber: Updatable, data?: UnsubscribeData): void;
-    deliver(message: MBusMessage, {}, channel?: Channel): void;
+    deliver(message: MBusMessage, sender: {}, channel?: Channel): void;
     getSubscribers(): CuteSet<Updatable>;
 }

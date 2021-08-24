@@ -1,8 +1,5 @@
-export type MessageName = string | number | Symbol;
+import MessageBus from "./MessgeBus";
 
-export type MBusMessage<T> = [messageName: MessageName, data: T];
+export { MessageBus };
 
-/**
- * This is interface for a subscriber
- * Any subscriber must implement this interface*/
-export interface Updatable {}
+export * from "./types";

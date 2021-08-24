@@ -1,4 +1,5 @@
 import * as CuteSet from "cute-set";
+
 import {
     MessageName,
     MBusMessage,
@@ -80,7 +81,7 @@ export default class MessageBus implements IMessageBus {
     private subscriptionsFull: CuteSet;
     private messageFactories = {};
 
-    static make(messageFactories = {}, debug): IMessageBus {
+    static make(messageFactories = {}, debug: boolean): IMessageBus {
         const mBus = new MessageBus(debug);
         for (const name in messageFactories) {
             mBus.addMessageFactory(name, messageFactories[name]);
@@ -112,7 +113,7 @@ export default class MessageBus implements IMessageBus {
         this.messageFactories[name] = factory;
     }
 
-    hasMessageFactory(name) {
+    hasMessageFactory(name: string) {
         return name in this.messageFactories;
     }
 
@@ -140,7 +141,7 @@ export default class MessageBus implements IMessageBus {
         }
     }
 
-    unsubscribe(subscriber: Updatable, data?: UnsubscribeData) {
+    unsubscribe(subscriber: Updatable, data: UnsubscribeData = {}) {
         const { channel, message } = data;
         if (channel) this._unsubscribeFromChannel(subscriber, channel);
         if (message) this._unsubscribeFromMessage(subscriber, message);
@@ -214,7 +215,10 @@ export default class MessageBus implements IMessageBus {
         subscriptions.set(subscriber, channels);
     }
 
-    private _subscribeToChannel(subscriber, channels) {
+    private _subscribeToChannel(
+        subscriber: Updatable,
+        channels: Array<Channel>
+    ) {
         if (this.debug) console.log(`Subscribing to channel ${channels}`);
         for (let channel of channels) {
             if (!this.subscriptionsPerChannel.has(channel)) {
@@ -231,7 +235,7 @@ export default class MessageBus implements IMessageBus {
     }
 
     _processQueue() {
-        this._processing = true;
+        this.setProcessing(true);
 
         // For every packet in queue
         let packet: MBusPacket;
@@ -242,7 +246,12 @@ export default class MessageBus implements IMessageBus {
             const receivedSet = new CuteSet();
             receivedSet.add(sender);
 
-            const deliver = function (msg, sender, mBus, subscriber) {
+            const deliver = function (
+                msg: MBusMessage,
+                sender: {},
+                mBus: IMessageBus,
+                subscriber: Updatable
+            ) {
                 subscriber.update.call(subscriber, msg, sender, mBus);
             }.bind(null, message, sender, this);
 
@@ -298,6 +307,12 @@ export default class MessageBus implements IMessageBus {
                 receivedSet.add(subscriber);
             }
         }
+
+        this.setProcessing(false);
+    }
+
+    private setProcessing(isProcessing: boolean) {
+        this._processing = isProcessing;
     }
 }
 
@@ -315,9 +330,12 @@ function asMessage(item: MBusMessage | MessageName): MBusMessage {
         return [item];
     }
 
-    if (Array.isArray(item) && typeof item[0] === "string") {
+    if (
+        Array.isArray(item) &&
+        ["string", "number", "symbol"].includes(typeof item[0])
+    ) {
         return item;
     }
 
-    throw new Error("Invalid message candidate");
+    throw new Error(`Invalid message candidate type.`);
 }
