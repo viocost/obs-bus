@@ -1,8 +1,8 @@
 {
   "name": "obs-bus",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A simple message bus implementation",
-  "main": "index.js",
+  "main": "dist/index.js",
   "repository": "git+https://github.com/viocost/obs-bus.git",
   "author": "Konstantin Rybakov <viocost@gmail.com>",
   "license": "MIT",
