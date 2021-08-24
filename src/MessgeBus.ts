@@ -352,7 +352,7 @@ function asSet<T>(item: T) {
 
 function asMessage(item: MBusMessage | MessageName): MBusMessage {
     if (typeof item === "string") {
-        return [item];
+        return [item, undefined];
     }
 
     if (

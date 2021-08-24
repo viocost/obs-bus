@@ -4,7 +4,7 @@ export type MessageName = string | number | Symbol;
 
 export type Channel = {} | string | number | Symbol;
 
-export type MBusMessage<T = any> = [messageName: MessageName, data?: T];
+export type MBusMessage<T = any> = [messageName: MessageName, data: T];
 
 export type Subscription = {
     subscriber: Updatable;

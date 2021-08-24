@@ -1,6 +1,6 @@
 {
   "name": "obs-bus",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A simple message bus implementation",
   "main": "dist/index.js",
   "repository": "git+https://github.com/viocost/obs-bus.git",
