@@ -1,19 +1,29 @@
 {
   "name": "obs-bus",
-  "version": "0.0.4",
-  "description": "Observer pattern message bus",
+  "version": "1.0.0",
+  "description": "A simple message bus implementation",
   "main": "index.js",
-  "repository": "git@github.com:viocost/obs-bus.git",
-  "author": "kostia <viocost@gmail.com>",
+  "repository": "git+https://github.com/viocost/obs-bus.git",
+  "author": "Konstantin Rybakov <viocost@gmail.com>",
   "license": "MIT",
   "dependencies": {
     "cute-set": "^2.0.1"
   },
   "devDependencies": {
-    "jest": "^26.6.3",
-    "prettier": "^2.3.0"
+    "@babel/core": "^7.15.0",
+    "@babel/preset-env": "^7.15.0",
+    "@babel/preset-typescript": "^7.15.0",
+    "@types/jest": "^27.0.1",
+    "babel-cli": "^6.26.0",
+    "babel-jest": "^27.0.6",
+    "jest": "^27.0.6",
+    "prettier": "^2.3.0",
+    "ts-jest": "^27.0.5",
+    "ts-node": "^10.2.1",
+    "typescript": "^4.3.5"
   },
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "build": "tsc"
   }
 }
