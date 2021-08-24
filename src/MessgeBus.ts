@@ -27,25 +27,50 @@ export class MessageFactory extends Array {
     }
 }
 
-/**
- * this class implements a map with default value,
- * such that when key does not exist a default value is returned,
- * instead of undefined or throwing error.
- *
- * The value that is returned is determined by default function
- * which by default returns undefined
- * */
-class SubscriptionMap<TKey, TVal> extends Map<TKey, TVal> {
-    private default: Function;
+class SubscriptionMap<TKey = any, TVal = any> {
+    private defaultFunction: Function;
+    private readonly map: Map<TKey, TVal> = new Map<TKey, TVal>();
+    [Symbol.iterator] = function* () {
+        for (const record of this.map) {
+            yield record;
+        }
+    };
 
-    get(key: any) {
-        if (!this.has(key)) return this.default();
-        return super.get(key);
+    get(key: TKey): TVal {
+        if (!this.map.has(key)) return this.defaultFunction();
+        return this.map.get(key);
+    }
+
+    set(key: TKey, val: TVal): void {
+        this.map.set(key, val);
+    }
+
+    has(key: TKey): boolean {
+        return this.map.has(key);
+    }
+
+    keys(): IterableIterator<TKey> {
+        return this.map.keys();
+    }
+
+    values(): IterableIterator<TVal> {
+        return this.map.values();
+    }
+
+    delete(key: TKey): void {
+        this.map.delete(key);
+    }
+
+    clear(): void {
+        this.map.clear();
+    }
+
+    entries(): IterableIterator<[TKey, TVal]> {
+        return this.map.entries();
     }
 
     constructor(defaultFunction = () => undefined) {
-        super();
-        this.default = defaultFunction;
+        this.defaultFunction = defaultFunction;
     }
 }
 
@@ -76,7 +101,7 @@ export default class MessageBus implements IMessageBus {
     private subscriptionsPerChannel: SubscriptionMap<Channel, CuteSet>;
     private subscriptionsPerMessage: SubscriptionMap<
         MessageName,
-        Map<Updatable, Array<Channel>>
+        Map<Updatable, CuteSet>
     >;
     private subscriptionsFull: CuteSet;
     private messageFactories = {};

@@ -5,7 +5,7 @@
     "rootDir": "./src",
     "moduleResolution": "node",
     "declaration": true,
-    "target": "es6",
+    "target": "es5",
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "downlevelIteration": true
